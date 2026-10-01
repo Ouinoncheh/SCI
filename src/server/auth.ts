@@ -2,12 +2,14 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { db } from './db';
 import { sendMail } from './mail';
+import { googleCredentials } from './google-auth';
 // Lazy initialization lets the public demo build without database credentials.
 let instance: ReturnType<typeof createAuth> | undefined;
 export function getAuth() {
   return (instance ??= createAuth());
 }
 function createAuth() {
+  const google = googleCredentials();
   if (
     !process.env.BETTER_AUTH_SECRET ||
     process.env.BETTER_AUTH_SECRET.length < 32 ||
@@ -27,6 +29,7 @@ function createAuth() {
     secret: process.env.BETTER_AUTH_SECRET,
     trustedOrigins: [new URL(process.env.BETTER_AUTH_URL).origin],
     database: prismaAdapter(db, { provider: 'postgresql', transaction: true }),
+    socialProviders: google ? { google: { ...google, prompt: 'select_account' } } : {},
     session: {
       modelName: 'AuthSession',
       expiresIn: 60 * 60 * 24 * 7,

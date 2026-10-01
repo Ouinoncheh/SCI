@@ -2108,6 +2108,14 @@ tbody th {
 .auth-card h1 {
   font-size: 28px;
 }
+.auth-social .button {
+  width: 100%;
+  min-height: 44px;
+}
+.auth-social > p {
+  text-align: center;
+  margin: 16px 0;
+}
 .auth-card form label,
 .profile-field {
   display: flex;

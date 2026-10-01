@@ -4,11 +4,26 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from './http';
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
-export function AuthForm({ mode, localMail }: { mode: Mode; localMail: boolean }) {
+export function AuthForm({
+  mode,
+  localMail,
+  googleEnabled = false,
+  googleError = false,
+}: {
+  mode: Mode;
+  localMail: boolean;
+  googleEnabled?: boolean;
+  googleError?: boolean;
+}) {
   const router = useRouter();
-  const [error, setError] = useState(''),
+  const [error, setError] = useState(
+      googleError
+        ? 'La connexion Google n’a pas abouti. Réessayez ou connectez-vous avec votre email.'
+        : '',
+    ),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const titles: Record<Mode, string> = {
     login: 'Retrouvons votre patrimoine.',
     register: 'Votre famille. Votre projet.',
@@ -25,9 +40,46 @@ export function AuthForm({ mode, localMail }: { mode: Mode; localMail: boolean }
         <h1>{titles[mode]}</h1>
         <p>
           {mode === 'register'
-            ? 'Créez votre compte, vérifiez votre email puis créez votre SCI.'
+            ? googleEnabled
+              ? 'Créez votre compte avec Google ou votre email, puis créez votre SCI.'
+              : 'Créez votre compte, vérifiez votre email puis créez votre SCI.'
             : 'Accédez à vos biens et analyses enregistrés.'}
         </p>
+        {googleEnabled && (mode === 'login' || mode === 'register') && (
+          <div className="auth-social">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy || googleBusy}
+              aria-busy={googleBusy}
+              onClick={async () => {
+                setError('');
+                setMessage('');
+                setGoogleBusy(true);
+                try {
+                  const result = await api<{ url: string }>('/api/auth/sign-in/social', 'POST', {
+                    provider: 'google',
+                    callbackURL: '/espace',
+                    errorCallbackURL: mode === 'register' ? '/inscription' : '/connexion',
+                    disableRedirect: true,
+                  });
+                  const destination = new URL(result.url);
+                  if (destination.origin !== 'https://accounts.google.com')
+                    throw new Error('Invalid provider URL');
+                  window.location.assign(destination.href);
+                } catch {
+                  setError(
+                    'La connexion Google est indisponible. Réessayez ou utilisez votre email.',
+                  );
+                  setGoogleBusy(false);
+                }
+              }}
+            >
+              {googleBusy ? 'Connexion à Google…' : 'Continuer avec Google'}
+            </button>
+            <p className="micro">ou avec votre adresse email</p>
+          </div>
+        )}
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -127,7 +179,7 @@ export function AuthForm({ mode, localMail }: { mode: Mode; localMail: boolean }
               {message}
             </div>
           )}
-          <button className="button primary" disabled={busy}>
+          <button className="button primary" disabled={busy || googleBusy}>
             {busy
               ? 'Veuillez patienter…'
               : mode === 'login'
