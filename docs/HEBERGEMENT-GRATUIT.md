@@ -26,6 +26,8 @@ Dans le service Render, ajouter **axelblaze.bid** comme domaine personnalisé. R
 
 ## 5. Vérifications
 
+Le conteneur inclut aussi le provider Leboncoin facultatif, sans second abonnement : voir [son fonctionnement et ses limites](LEBONCOIN.md). Il respecte les refus d’accès et conserve le fallback manuel ; sa présence ne garantit pas l’accès au portail.
+
 Tester l’inscription avec réception réelle du message, la vérification, la connexion, la récupération de mot de passe, une SCI et un bien avec une photo. La photo doit apparaître dans le bucket privé et ses champs binaires en base rester nuls. Un utilisateur extérieur à la SCI ne doit pas pouvoir la consulter. Aucun test local n’envoie de vrais emails ni ne contacte un stockage Supabase réel.
 
 Les anciens fichiers PostgreSQL restent lisibles ; ils ne sont pas déplacés automatiquement et aucune donnée locale n’est importée dans la base de production. Les imports convertis réutilisent leurs références privées sans dupliquer le contenu. Les fichiers d’un envoi échoué sont nettoyés ; si le fournisseur est indisponible pendant ce nettoyage, un objet orphelin peut rester à supprimer depuis le tableau de bord. Les clés serveur ne sont pas exposées au navigateur.

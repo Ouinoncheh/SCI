@@ -1,4 +1,7 @@
 import { extractListingText } from './text';
+export { LeboncoinProvider, normalizeLeboncoinAd, parseLeboncoinAttributes } from './leboncoin';
+export { ManualListingProvider } from './manual';
+export { extractLeboncoinAdId, ListingProviderError, type ListingProvider } from './provider';
 export type ListingDraft = {
   sourceUrl: string | null;
   description: string;

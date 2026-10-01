@@ -117,7 +117,7 @@ export async function createProperty(userId: string, sciId: string, raw: unknown
                   platform: new URL(input.listing.sourceUrl).hostname,
                   normalizedData: {
                     ...input.listing,
-                    photos: draft ? [] : input.listing.photos,
+                    photos: input.listing.photos,
                     ...(normalized ? { normalized } : {}),
                     ...(draft
                       ? { provenance: draft.normalized, enrichment: draft.enrichment }

@@ -120,6 +120,8 @@ Voir [le plan technique](docs/ARCHITECTURE.md) et [les conventions de calcul](do
 
 ## Ajouter un provider
 
+**Leboncoin** : provider normalisé, extraction d’ID, service Python interne inspiré de `leboncoin-mcp`, endpoint privé `/api/listings/import`, brouillons persistants et fallback manuel. Aucun fetch HTML du portail, imitation de navigateur ou retry après refus. Voir [configuration, lancement et limites](docs/LEBONCOIN.md).
+
 **Travaux et scénarios** : un onglet sur chaque bien propose des postes TTC par pièce, fourchettes de prix et sources, un budget bas/central/haut, un loyer manuel et un comparateur de rentabilité. Les scénarios persistent dans l’espace connecté ; leur application à l’analyse est explicite et historisée. Voir [le fonctionnement des budgets travaux](docs/TRAVAUX.md).
 
 **Visualisation après travaux** : préparation de projets depuis les photos privées, prompts, styles, budget associé, jobs persistants et comparateur avant/après. La génération réelle exige une clé API et un modèle configurés côté serveur et reste désactivée localement. Aucun résultat IA simulé n’est affiché par l’application. Voir [la configuration et les limites](docs/VISUALISATION.md).
@@ -138,6 +140,6 @@ Ensuite : caractéristiques complémentaires (équipements, GES, coordonnées, p
 
 ## Déploiement
 
-Le Next.js standard peut être déployé sur Vercel ou un runtime Node Railway ; PostgreSQL peut être hébergé séparément. Exécuter `pnpm db:generate` avant `pnpm build`, et `prisma migrate deploy` dans un job de release dédié. L’authentification en production exige HTTPS et SMTP. Prévoir sauvegardes, pooling, contrôle de la configuration du proxy, CSP et revue de sécurité avant ouverture aux données privées. Aucun déploiement externe n’a été effectué.
+Le déploiement retenu utilise Render Free, Supabase Free et Resend. Voir [le guide de mise en ligne](docs/HEBERGEMENT-GRATUIT.md). Le Dockerfile génère Prisma et construit Next.js ; `start-production.mjs` applique les migrations, démarre le service Python interne facultatif puis l’application. L’authentification en production exige HTTPS et un fournisseur email configuré.
 
 Les illustrations sont des SVG originaux locaux. Les polices Google Fonts sont facultatives, avec repli système hors réseau. Aucune photographie réelle n’est utilisée.

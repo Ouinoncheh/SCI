@@ -1,0 +1,20 @@
+{
+  "id": "1234567890",
+  "title": "Appartement lumineux",
+  "body": "Appartement à Rognac, balcon et cave.",
+  "price": [245000],
+  "location": { "city": "Rognac", "zipcode": "13340", "lat": 43.487, "lng": 5.234 },
+  "images": ["https://img.leboncoin.fr/api/v1/lbcpb1/images/example.jpg"],
+  "first_publication_date": "2026-09-29T10:00:00Z",
+  "attributes": [
+    { "key": "square", "value": "70" },
+    { "key": "rooms", "value": "3" },
+    { "key": "bedrooms", "value": "2" },
+    { "key": "real_estate_type", "value": "2", "key_label": "Type de bien", "value_label": "Appartement" },
+    { "key": "elevator", "value": "0" },
+    { "key": "energy_rate", "value": "C" },
+    { "key": "ges", "value": "D" },
+    { "key": "outside_access", "value": ["balcony"] },
+    { "key": "custom_feature", "value": "À confirmer" }
+  ]
+}

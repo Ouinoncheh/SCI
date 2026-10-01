@@ -53,6 +53,9 @@ export type NormalizedProperty = PropertyValues & {
   sourceListingId: string | null;
   importedAt: string;
   confidence: Partial<Record<keyof PropertyValues, FieldEvidence>>;
+  rawAttributes?: Record<string, unknown>;
+  pricePerSquareMeter?: number | null;
+  importStatus?: 'PENDING' | 'IMPORTED' | 'PARTIAL' | 'NEEDS_MANUAL_IMPORT' | 'FAILED';
 };
 export const emptyValues = (): PropertyValues => ({
   title: null,

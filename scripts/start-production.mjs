@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 
 const required = [
   'DATABASE_URL',
@@ -52,14 +53,41 @@ if (process.env.RUN_MIGRATIONS_ON_START === 'true') {
     process.exit(1);
   }
 }
+let listingService;
+if (process.env.LEBONCOIN_SERVICE_ENABLED === 'true' && !process.env.LEBONCOIN_SERVICE_URL) {
+  process.env.LEBONCOIN_SERVICE_URL = 'http://127.0.0.1:8001';
+  process.env.LEBONCOIN_SERVICE_TOKEN = randomBytes(32).toString('hex');
+  listingService = spawn(
+    process.env.LEBONCOIN_PYTHON ?? 'python3',
+    ['services/leboncoin-mcp/server.py'],
+    {
+      stdio: ['ignore', 'ignore', 'ignore'],
+      env: { ...process.env, HOST: '127.0.0.1', PORT: '8001' },
+    },
+  );
+  listingService.on('error', () =>
+    console.error('Service annonces indisponible : import manuel disponible.'),
+  );
+  listingService.on('exit', () =>
+    console.info('Service annonces arrêté : import manuel disponible.'),
+  );
+}
 const child = spawn(
   process.execPath,
   ['node_modules/next/dist/bin/next', 'start', '--hostname', '0.0.0.0'],
   { stdio: 'inherit', env: process.env },
 );
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
+for (const signal of ['SIGINT', 'SIGTERM'])
+  process.on(signal, () => {
+    child.kill(signal);
+    listingService?.kill(signal);
+  });
 child.on('error', () => {
   console.error('Démarrage impossible.');
+  listingService?.kill();
   process.exit(1);
 });
-child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
+child.on('exit', (code, signal) => {
+  listingService?.kill();
+  process.exit(code ?? (signal ? 1 : 0));
+});

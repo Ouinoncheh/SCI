@@ -11,8 +11,13 @@ COPY . .
 RUN pnpm db:generate && pnpm build
 
 FROM base AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && rm -rf /var/lib/apt/lists/*
+COPY services/leboncoin-mcp/requirements.txt /tmp/leboncoin-requirements.txt
+RUN python3 -m venv /opt/leboncoin && /opt/leboncoin/bin/pip install --no-cache-dir -r /tmp/leboncoin-requirements.txt
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV LEBONCOIN_SERVICE_ENABLED=true
+ENV LEBONCOIN_PYTHON=/opt/leboncoin/bin/python
 WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/.next ./.next
@@ -20,6 +25,7 @@ COPY --from=build --chown=node:node /app/prisma ./prisma
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/next.config.ts ./next.config.ts
+COPY --from=build --chown=node:node /app/services/leboncoin-mcp ./services/leboncoin-mcp
 USER node
 EXPOSE 3000
 CMD ["node", "scripts/start-production.mjs"]

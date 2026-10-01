@@ -7,12 +7,15 @@ import {
   type PropertyValues,
 } from './normalized';
 import { extractListingText, normalizeListingText } from './text';
-export interface ListingProvider {
+import { LeboncoinProvider } from './leboncoin';
+import { ManualListingProvider } from './manual';
+import { isLeboncoinUrl, ListingProviderError, type ListingErrorCode } from './provider';
+export interface ContentListingProvider {
   id: string;
   fetchListing(url: string): Promise<string>;
   extractPropertyData(content: string, url: string): NormalizedProperty;
 }
-export class StructuredHtmlProvider implements ListingProvider {
+export class StructuredHtmlProvider implements ContentListingProvider {
   id = 'authorized-html';
   constructor(private download: (url: string) => Promise<string>) {}
   fetchListing(url: string) {
@@ -92,28 +95,54 @@ export class StructuredHtmlProvider implements ListingProvider {
   }
 }
 export type ImportResult = {
-  status: 'NEEDS_IMPORT_DATA' | 'READY';
+  status: 'NEEDS_IMPORT_DATA' | 'READY' | 'NEEDS_MANUAL_IMPORT';
   normalized: NormalizedProperty;
   message: string | null;
+  errorCode?: ListingErrorCode;
 };
 export class ListingImporter {
-  constructor(private provider: ListingProvider) {}
+  constructor(
+    private provider: ContentListingProvider,
+    private leboncoin?: LeboncoinProvider,
+  ) {}
   async import(url: string, input?: { html?: string; text?: string }): Promise<ImportResult> {
+    const automaticLeboncoin =
+      isLeboncoinUrl(url) && input?.html === undefined && input?.text === undefined;
     try {
       const normalized =
         input?.text !== undefined
           ? normalizeListingText(input.text, url)
-          : this.provider.extractPropertyData(
-              input?.html ?? (await this.provider.fetchListing(url)),
-              url,
-            );
+          : automaticLeboncoin
+            ? await (
+                this.leboncoin ??
+                new LeboncoinProvider(async () => {
+                  throw new ListingProviderError('LEBONCOIN_SERVICE_UNAVAILABLE');
+                })
+              ).fetchListing(url)
+            : this.provider.extractPropertyData(
+                input?.html ?? (await this.provider.fetchListing(url)),
+                url,
+              );
+      if (automaticLeboncoin)
+        normalized.importStatus =
+          normalized.price !== null && normalized.surface !== null ? 'IMPORTED' : 'PARTIAL';
       return {
         status:
           normalized.price !== null && normalized.surface !== null ? 'READY' : 'NEEDS_IMPORT_DATA',
         normalized,
         message: null,
       };
-    } catch {
+    } catch (error) {
+      if (automaticLeboncoin) {
+        const normalized = await new ManualListingProvider().fetchListing(url);
+        normalized.importStatus = 'NEEDS_MANUAL_IMPORT';
+        return {
+          status: 'NEEDS_MANUAL_IMPORT',
+          normalized,
+          message: new ListingProviderError('MANUAL_IMPORT_REQUIRED').message,
+          errorCode: error instanceof ListingProviderError ? error.code : 'LEBONCOIN_IMPORT_FAILED',
+        };
+      }
       return {
         status: 'NEEDS_IMPORT_DATA',
         normalized: new PropertyNormalizer().normalize(url, emptyValues(), 'UNAVAILABLE', 0),

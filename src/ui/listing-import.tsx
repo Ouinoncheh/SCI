@@ -33,7 +33,7 @@ const numbers = new Set([
   'agencyFees',
 ]);
 const flags = new Set(['elevator', 'balcony', 'terrace', 'garden', 'parking', 'garage', 'cellar']);
-export function ListingImport({
+export function ImportListingForm({
   onApply,
 }: {
   onApply: (data: ImportedListing, listing: ListingAttachment) => void;
@@ -51,6 +51,8 @@ export function ListingImport({
   const [recent, setRecent] = useState<{ id: string; sourceUrl: string; status: string }[]>([]),
     [file, setFile] = useState<File>(),
     [kind, setKind] = useState('document');
+  const [photoRights, setPhotoRights] = useState(false);
+  const [cover, setCover] = useState<string>();
   useEffect(() => {
     let active = true;
     if (base)
@@ -72,7 +74,7 @@ export function ListingImport({
     setValues(propertyValuesSchema.parse(clean));
     setMessage(
       data.message ??
-        (data.status === 'NEEDS_IMPORT_DATA'
+        (['NEEDS_IMPORT_DATA', 'NEEDS_MANUAL_IMPORT'].includes(data.status)
           ? 'Complétez les informations manquantes.'
           : 'Informations extraites : vérifiez chaque champ.'),
     );
@@ -90,13 +92,15 @@ export function ListingImport({
   }
   async function analyze(input?: { text?: string; corrected?: PropertyValues }) {
     if (base) {
-      const data = await api<Draft>(`${base}/listing-import`, 'POST', {
+      const response = await api<{ draft: Draft }>('/api/listings/import', 'POST', {
+        sciId: workspace!.sci!.id,
         url,
         html: input ? undefined : html,
         ...input,
         draftId: draft?.id,
         version: draft?.version,
       });
+      const data = response.draft;
       receive(await api<Draft>(`${base}/imports/${data.id}`));
       setMessage(data.message ?? 'Informations à vérifier.');
     } else {
@@ -124,9 +128,12 @@ export function ListingImport({
     }
   }
   return (
-    <section className="panel listing-import">
+    <section className="panel listing-import" aria-busy={busy}>
       <h2>Importer une annonce par son lien</h2>
-      <p>Commencez avec une URL. Si la source refuse la lecture, complétez l’annonce ici.</p>
+      <p>
+        Collez un lien Leboncoin pour récupérer les données disponibles. Si l’import échoue,
+        complétez l’annonce ici.
+      </p>
       {!base && (
         <p className="demo-notice">
           Brouillon temporaire de démonstration.{' '}
@@ -172,6 +179,8 @@ export function ListingImport({
             setText('');
             setError('');
             setMessage('');
+            setPhotoRights(false);
+            setCover(undefined);
           }}
         />
       </label>
@@ -198,14 +207,18 @@ export function ListingImport({
         disabled={busy || !canEdit || !publicHttps(url)}
         onClick={() => void operation(() => analyze())}
       >
-        {busy ? 'Lecture de l’annonce…' : 'Analyser l’annonce'}
+        {busy ? 'Récupération de l’annonce…' : 'Analyser le bien'}
       </button>
       {error && <p role="alert">{error}</p>}
-      {message && <p className="demo-notice">{message}</p>}
+      {message && (
+        <p className="demo-notice" role="status">
+          {message}
+        </p>
+      )}
       {draft && (
         <div>
           <h3>
-            {draft.status === 'NEEDS_IMPORT_DATA'
+            {['NEEDS_IMPORT_DATA', 'NEEDS_MANUAL_IMPORT'].includes(draft.status)
               ? 'Compléter l’annonce'
               : 'Aperçu — à vérifier avant utilisation'}
           </h3>
@@ -436,6 +449,47 @@ export function ListingImport({
                 ))}
             </div>
           )}
+          {!!values.images.length && (
+            <fieldset>
+              <legend>Photos référencées dans l’annonce</legend>
+              <p className="muted">
+                Ces liens peuvent expirer. Vous pouvez également ajouter vos propres fichiers pour
+                les conserver dans la galerie privée.
+              </p>
+              <div className="listing-photos">
+                {values.images.map((image, index) => (
+                  <figure key={image}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Third-party references, no shared image optimizer. */}
+                    <img
+                      src={image}
+                      alt={`Photo de l’annonce ${index + 1}`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    <label>
+                      <input
+                        type="radio"
+                        name="listing-cover"
+                        checked={(cover ?? values.images[0]) === image}
+                        onChange={() => setCover(image)}
+                        disabled={busy}
+                      />
+                      Photo principale {index + 1}
+                    </label>
+                  </figure>
+                ))}
+              </div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={photoRights}
+                  onChange={(e) => setPhotoRights(e.target.checked)}
+                  disabled={busy}
+                />
+                Je dispose de l’autorisation de réutiliser ces photos dans mon bien.
+              </label>
+            </fieldset>
+          )}
           <div className="panel enrichment-summary">
             <h4>Enrichissement public</h4>
             <p>
@@ -529,13 +583,23 @@ export function ListingImport({
                     address: values.address,
                     rooms: values.rooms,
                     dpe: values.dpe,
-                    photos: [],
+                    photos: photoRights
+                      ? [
+                          cover ?? values.images[0],
+                          ...values.images.filter((image) => image !== (cover ?? values.images[0])),
+                        ].filter((image): image is string => !!image)
+                      : [],
                     warnings: [],
                   },
                   {
                     sourceUrl: url,
                     method: 'text',
-                    photos: [],
+                    photos: photoRights
+                      ? [
+                          cover ?? values.images[0],
+                          ...values.images.filter((image) => image !== (cover ?? values.images[0])),
+                        ].filter((image): image is string => !!image)
+                      : [],
                     photoRights: true,
                     draftId: base ? draft.id : undefined,
                     normalized: valid.data,
@@ -544,10 +608,13 @@ export function ListingImport({
               })
             }
           >
-            Utiliser ces informations sans photos distantes
+            {photoRights
+              ? 'Utiliser ces informations et les photos autorisées'
+              : 'Utiliser ces informations sans photos distantes'}
           </button>
         </div>
       )}
     </section>
   );
 }
+export const ListingImport = ImportListingForm;

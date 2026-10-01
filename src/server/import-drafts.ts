@@ -12,6 +12,9 @@ import {
 import { webUrl } from '../listing-providers/import-types';
 import { PropertyEnrichmentService } from '../market-data/enrichment';
 import { FrenchPublicDataProvider } from './public-data';
+import { LeboncoinProvider } from '../listing-providers/leboncoin';
+import { getLeboncoinAd } from './leboncoin-service';
+import { safeLogUrl } from './import-log';
 export const importRequestSchema = z
   .object({
     url: webUrl,
@@ -26,7 +29,10 @@ export const importRequestSchema = z
     (input) => [input.html, input.text, input.corrected].filter((v) => v !== undefined).length <= 1,
     'Choisissez un seul contenu à analyser.',
   );
-export const importer = new ListingImporter(new StructuredHtmlProvider(fetchListingHtml));
+export const importer = new ListingImporter(
+  new StructuredHtmlProvider(fetchListingHtml),
+  new LeboncoinProvider(getLeboncoinAd),
+);
 export async function importDraft(
   userId: string,
   sciId: string,
@@ -35,6 +41,7 @@ export async function importDraft(
 ) {
   await membership(userId, sciId, 'write');
   const input = importRequestSchema.parse(raw);
+  const started = Date.now();
   const previous = input.draftId
     ? await db.propertyImportDraft.findFirst({ where: { id: input.draftId, sciId } })
     : null;
@@ -63,6 +70,10 @@ export async function importDraft(
       }
   if (previous && previous.sourceUrl === input.url) {
     const old = previous.normalized as unknown as NormalizedProperty;
+    result.normalized.rawAttributes ??= old.rawAttributes;
+    if (input.corrected && old.importStatus)
+      result.normalized.importStatus =
+        input.corrected.price !== null && input.corrected.surface !== null ? 'IMPORTED' : 'PARTIAL';
     for (const key of Object.keys(
       propertyValuesSchema.shape,
     ) as (keyof typeof propertyValuesSchema.shape)[]) {
@@ -80,9 +91,17 @@ export async function importDraft(
         result.normalized.confidence[key] = old.confidence[key];
     }
   }
-  const enrichment = await new PropertyEnrichmentService(new FrenchPublicDataProvider()).enrich(
-    result.normalized,
-  );
+  const enrichment = await new PropertyEnrichmentService(new FrenchPublicDataProvider())
+    .enrich(result.normalized)
+    .catch(() => ({
+      geocoding: null,
+      market: null,
+      marketSource: null,
+      dpeCandidates: [],
+      warnings: [
+        'Enrichissement public indisponible. Vous pouvez poursuivre avec les données de l’annonce.',
+      ],
+    }));
   if (enrichment.geocoding) {
     for (const key of ['latitude', 'longitude'] as const)
       if (result.normalized[key] === null) {
@@ -100,9 +119,11 @@ export async function importDraft(
     normalized: result.normalized as unknown as Prisma.InputJsonValue,
     enrichment: enrichment as unknown as Prisma.InputJsonValue,
     status:
-      result.normalized.price !== null && result.normalized.surface !== null
-        ? 'READY'
-        : 'NEEDS_IMPORT_DATA',
+      result.status === 'NEEDS_MANUAL_IMPORT'
+        ? 'NEEDS_MANUAL_IMPORT'
+        : result.normalized.price !== null && result.normalized.surface !== null
+          ? 'READY'
+          : 'NEEDS_IMPORT_DATA',
     sourceUrl: input.url,
     source: result.normalized.source,
   };
@@ -126,7 +147,21 @@ export async function importDraft(
           throw new HttpError(409, 'Limite de 100 brouillons actifs dans cette SCI.');
         return tx.propertyImportDraft.create({ data: { ...data, sciId, createdBy: userId } });
       });
-  return { ...draft, message: result.message };
+  console.info(
+    JSON.stringify({
+      provider: result.normalized.source,
+      listingId: result.normalized.sourceListingId,
+      sourceUrl: safeLogUrl(input.url),
+      operation: 'IMPORT',
+      status: draft.status,
+      durationMs: Date.now() - started,
+    }),
+  );
+  return {
+    ...draft,
+    message: result.message,
+    errorCode: 'errorCode' in result ? result.errorCode : undefined,
+  };
 }
 export async function draftAccess(userId: string, sciId: string, id: string, write = false) {
   await membership(userId, sciId, write ? 'write' : 'read');

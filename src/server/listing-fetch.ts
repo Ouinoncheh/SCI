@@ -3,6 +3,7 @@ import { request } from 'node:https';
 import ipaddr from 'ipaddr.js';
 import { publicHttps } from '../listing-providers/import-types';
 import { ListingFetchError, logImport, type ImportDiagnostic } from './import-log';
+import { isLeboncoinUrl } from '../listing-providers/provider';
 
 export function allowedListingUrl(raw: string, domains: string[]) {
   if (!publicHttps(raw)) throw new Error('URL HTTPS publique invalide.');
@@ -21,6 +22,7 @@ export function isPublicAddress(address: string) {
   }
 }
 export async function fetchListingHtml(raw: string) {
+  if (isLeboncoinUrl(raw)) throw new Error('Leboncoin utilise exclusivement le provider de données et le fallback manuel.');
   const domains = (process.env.LISTING_ALLOWED_HOSTS ?? '')
     .split(',')
     .map((s) => s.trim())
