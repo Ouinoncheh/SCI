@@ -1,0 +1,517 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+enum TaxRegime {
+  SCI_IR
+  SCI_IS
+}
+enum PropertyStatus {
+  NEW
+  TO_ANALYZE
+  INTERESTING
+  VISIT_PLANNED
+  OFFER
+  NEGOTIATION
+  REJECTED
+  PURCHASED
+}
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+  USER_PROVIDED
+}
+enum VoteChoice {
+  FAVORABLE
+  TO_STUDY
+  UNFAVORABLE
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String?
+  emailVerifiedAt DateTime?
+  emailVerified Boolean @default(false)
+  image String?
+  updatedAt DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  memberships SCIMember[]
+  sessions Session[]
+  recoveryTokens RecoveryToken[]
+  authSessions AuthSession[]
+  accounts Account[]
+}
+model AuthSession {
+  id String @id @default(cuid())
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  @@index([userId])
+}
+model Account {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+  providerId String
+  password String?
+  accessToken String?
+  refreshToken String?
+  idToken String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+model Verification {
+  id String @id @default(cuid())
+  identifier String
+  value String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([identifier])
+}
+model RateLimit {
+  id String @id @default(cuid())
+  key String @unique
+  count Int
+  lastRequest BigInt
+}
+model ApiRateBucket {
+  key String @id
+  count Int
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([userId, expiresAt])
+}
+model RecoveryToken {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  consumedAt DateTime?
+  @@index([userId])
+}
+model SCI {
+  id String @id @default(cuid())
+  name String
+  capital Decimal @db.Decimal(16, 2)
+  taxRegime TaxRegime
+  financialSettings Json
+  investmentAssumptions Json
+  createdAt DateTime @default(now())
+  members SCIMember[]
+  invitations Invitation[]
+  properties Property[]
+  importDrafts PropertyImportDraft[]
+  alerts Alert[]
+  activities ActivityLog[]
+}
+model SCIMember {
+  id String @id @default(cuid())
+  sciId String
+  userId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @default(MEMBER)
+  shares Int
+  joinedAt DateTime @default(now())
+  comments Comment[]
+  votes Vote[]
+  watchlists Watchlist[]
+  notifications Notification[]
+  @@unique([sciId, userId])
+  @@unique([sciId, id])
+  @@index([userId])
+}
+model Invitation {
+  id String @id @default(cuid())
+  sciId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  email String
+  role Role
+  shares Int @default(0)
+  tokenHash String @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  @@index([sciId, email])
+}
+model Property {
+  id String @id @default(cuid())
+  sciId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  title String
+  type String
+  price Decimal @db.Decimal(16, 2)
+  area Decimal @db.Decimal(12, 2)
+  city String
+  postcode String
+  address String?
+  latitude Float?
+  longitude Float?
+  rooms Int?
+  bedrooms Int?
+  floor Int?
+  elevator Boolean?
+  balcony Boolean?
+  terrace Boolean?
+  parking Boolean?
+  garage Boolean?
+  cellar Boolean?
+  dpe String?
+  ges String?
+  condoCharges Decimal? @db.Decimal(16, 2)
+  propertyTax Decimal? @db.Decimal(16, 2)
+  description String?
+  photos Json?
+  status PropertyStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  version Int @default(1)
+  listings Listing[]
+  roomsGallery PropertyRoom[]
+  analyses PropertyAnalysis[]
+  loans LoanScenario[]
+  taxes TaxScenario[]
+  expenses Expense[]
+  renovations Renovation[]
+  renovationScenarios RenovationScenario[]
+  designProjects RoomDesignProject[]
+  marketData MarketData[]
+  projections Projection[]
+  watchlists Watchlist[]
+  comments Comment[]
+  votes Vote[]
+  @@unique([sciId, id])
+  @@index([sciId, status, createdAt])
+  @@index([sciId, city, price])
+}
+model Listing {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  url String?
+  platform String
+  rawText String?
+  normalizedData Json
+  photoRights String?
+  publishedAt DateTime?
+  importedAt DateTime @default(now())
+  @@index([sciId, propertyId])
+}
+model PropertyAnalysis {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  engineVersion String
+  inputs Json
+  results Json
+  createdAt DateTime @default(now())
+  @@index([sciId, propertyId, createdAt])
+}
+model LoanScenario {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  name String
+  principal Decimal @db.Decimal(16, 2)
+  annualRate Decimal @db.Decimal(8, 4)
+  months Int
+  insuranceRate Decimal @db.Decimal(8, 4)
+  deferredMonths Int @default(0)
+  loanType String @default("AMORTIZING_FIXED")
+  assumptions Json
+  @@index([sciId, propertyId])
+}
+model TaxScenario {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  regime TaxRegime
+  ruleVersion String
+  effectiveAt DateTime
+  source String
+  comment String
+  parameters Json
+  results Json?
+  @@index([sciId, propertyId])
+}
+model Expense {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  category String
+  annualAmount Decimal? @db.Decimal(16, 2)
+  rentPercent Decimal? @db.Decimal(8, 4)
+  recoverable Boolean @default(false)
+  @@index([sciId, propertyId])
+}
+model Renovation {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  category String
+  amount Decimal @db.Decimal(16, 2)
+  contingencyRate Decimal @db.Decimal(8, 4)
+  plannedYear Int?
+  @@index([sciId, propertyId])
+}
+model MarketData {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  metric String
+  value Decimal? @db.Decimal(18, 6)
+  source String
+  observedAt DateTime
+  zone String
+  confidence Confidence
+  updatedAt DateTime @updatedAt
+  @@index([sciId, propertyId, metric])
+}
+model Projection {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  name String
+  engineVersion String
+  assumptions Json
+  annualResults Json
+  createdAt DateTime @default(now())
+  @@index([sciId, propertyId])
+}
+model Watchlist {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  memberId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  member SCIMember @relation(fields: [sciId, memberId], references: [sciId, id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([sciId, propertyId, memberId])
+}
+model Comment {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  memberId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  member SCIMember @relation(fields: [sciId, memberId], references: [sciId, id], onDelete: Cascade)
+  body String
+  mentionedMemberIds String[]
+  createdAt DateTime @default(now())
+  @@index([sciId, propertyId, createdAt])
+}
+model Vote {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  memberId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  member SCIMember @relation(fields: [sciId, memberId], references: [sciId, id], onDelete: Cascade)
+  choice VoteChoice
+  @@unique([sciId, propertyId, memberId])
+}
+model Alert {
+  id String @id @default(cuid())
+  sciId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  name String
+  criteria Json
+  channels String[]
+  enabled Boolean @default(true)
+  lastRunAt DateTime?
+  @@index([sciId, enabled])
+}
+model Notification {
+  id String @id @default(cuid())
+  sciId String
+  memberId String
+  member SCIMember @relation(fields: [sciId, memberId], references: [sciId, id], onDelete: Cascade)
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([sciId, memberId, readAt])
+}
+model PropertyRoom {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  name String
+  roomType String
+  floor Int?
+  areaEstimate Float?
+  notes String
+  createdAt DateTime @default(now())
+  photos RoomPhoto[]
+  @@unique([sciId, propertyId, id])
+}
+model RoomPhoto {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  roomId String
+  room PropertyRoom @relation(fields: [sciId, propertyId, roomId], references: [sciId, propertyId, id], onDelete: Cascade)
+  image Bytes?
+  thumbnail Bytes?
+  imagePath String?
+  thumbnailPath String?
+  originalFilename String
+  mimeType String @default("image/webp")
+  width Int
+  height Int
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+  isCover Boolean @default(false)
+  angleLabel String
+  comment String
+  @@index([sciId, propertyId, roomId])
+}
+model PropertyImportDraft {
+  id String @id @default(cuid())
+  sciId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  sourceUrl String
+  source String
+  status String @default("NEEDS_IMPORT_DATA")
+  normalized Json
+  enrichment Json
+  version Int @default(1)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  convertedPropertyId String?
+  assets ImportAsset[]
+  @@unique([sciId, id])
+  @@index([sciId, status, updatedAt])
+}
+model ImportAsset {
+  id String @id @default(cuid())
+  sciId String
+  draftId String
+  draft PropertyImportDraft @relation(fields: [sciId, draftId], references: [sciId, id], onDelete: Cascade)
+  kind String
+  originalFilename String
+  mimeType String
+  original Bytes?
+  originalPath String?
+  mediumPath String?
+  thumbnailPath String?
+  medium Bytes?
+  thumbnail Bytes?
+  width Int?
+  height Int?
+  uploadedAt DateTime @default(now())
+  @@index([sciId, draftId])
+}
+model ActivityLog {
+  id String @id @default(cuid())
+  sciId String
+  sci SCI @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  actorId String?
+  action String
+  entityId String?
+  metadata Json
+  createdAt DateTime @default(now())
+  @@index([sciId, createdAt])
+}
+
+model RenovationScenario {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  data Json
+  favorite Boolean @default(false)
+  archived Boolean @default(false)
+  version Int @default(1)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([sciId, propertyId, archived])
+}
+
+model RoomDesignProject {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  property Property @relation(fields: [sciId, propertyId], references: [sciId, id], onDelete: Cascade)
+  roomId String
+  photoId String
+  scenarioId String?
+  name String
+  style String
+  renovationLevel String
+  prompt String
+  createdBy String
+  createdAt DateTime @default(now())
+  archived Boolean @default(false)
+  visuals GeneratedVisual[]
+  @@unique([sciId, propertyId, id])
+  @@index([sciId, propertyId, archived])
+}
+
+model GeneratedVisual {
+  id String @id @default(cuid())
+  sciId String
+  propertyId String
+  projectId String
+  project RoomDesignProject @relation(fields: [sciId, propertyId, projectId], references: [sciId, propertyId, id], onDelete: Cascade)
+  requestKey String
+  variationLabel String
+  status String @default("PENDING")
+  provider String
+  modelName String
+  image Bytes?
+  thumbnail Bytes?
+  imagePath String?
+  thumbnailPath String?
+  width Int?
+  height Int?
+  errorMessage String?
+  favorite Boolean @default(false)
+  leaseId String?
+  startedAt DateTime?
+  completedAt DateTime?
+  createdBy String
+  createdAt DateTime @default(now())
+  @@unique([sciId, requestKey, variationLabel])
+  @@index([status, createdAt])
+  @@index([sciId, createdAt])
+}
