@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: predictsci
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BETTER_AUTH_URL
+        value: https://axelblaze.bid
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: MAIL_MODE
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MEDIA_STORAGE
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: predictsci-private
+      - key: RUN_MIGRATIONS_ON_START
+        value: 'true'
+      - key: DESIGN_GENERATION_ENABLED
+        value: 'false'
