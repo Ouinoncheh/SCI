@@ -6,7 +6,9 @@ Dans l’espace connecté, Ajouter un bien → coller l’URL → Analyser le bi
 
 Le service reprend le principe `get_ad` de [wydii/leboncoin-mcp](https://github.com/wydii/leboncoin-mcp), avec `lbc==1.1.6`. Il expose une façade HTTP interne, pas le protocole MCP : les autres outils (recherche, vendeurs, etc.) ne sont pas exposés. Next.js ne connaît aucun détail du package Python.
 
-Attention : l’initialisation standard de lbc imite un navigateur, charge une page HTML pour initialiser des cookies, et retente les 403. Notre `PlainClient` saute cette initialisation et remplace son transport par urllib : identité PredictSCI explicite, TLS vérifié, aucun proxy, aucun cookie, aucun HTML, aucune redirection et aucun retry. Une protection ou restriction entraîne le fallback ; cette adaptation ne garantit donc pas l’accès à une annonce.
+Depuis l'autorisation utilisateur du 1 octobre 2026, le transport par défaut utilise le réglage `chrome_android` documenté par [BPiroga/leboncoin-mcp](https://github.com/BPiroga/leboncoin-mcp). Une session temporaire initialise ses propres cookies sur la page d'accueil ; aucun profil ou cookie utilisateur n'est lu. Les requêtes sont bornées à 3 secondes chacune, les retries désactivés et aucun proxy n'est configuré. Un refus de l'initialisation ou un challenge entraîne le fallback. `LEBONCOIN_TRANSPORT=plain` permet de retrouver le transport urllib antérieur sans cookies ni imitation de navigateur.
+
+Un essai réel du transport puis de l'adaptateur sur l'annonce `3218107725` a récupéré un prix de 505 000 €, une description et six références de photos. Cela ne garantit pas les autres annonces, la disponibilité future, ni l'accès depuis Render. Les références de photos ne constituent pas une vérification du téléchargement de chacune d'elles.
 
 ## Persistance et analyse
 

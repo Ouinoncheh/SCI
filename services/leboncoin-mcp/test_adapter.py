@@ -7,6 +7,11 @@ from adapter import fetch_api, get_ad, ImportFailure
 
 
 class AdapterTests(unittest.TestCase):
+    def setUp(self):
+        env = patch.dict('os.environ', {'LEBONCOIN_TRANSPORT': 'plain'})
+        env.start()
+        self.addCleanup(env.stop)
+
     def test_refusal_is_not_retried(self):
         for status, code in [(403, 'MANUAL_IMPORT_REQUIRED'), (429, 'MANUAL_IMPORT_REQUIRED'), (404, 'LEBONCOIN_LISTING_NOT_FOUND')]:
             opener = unittest.mock.Mock()
@@ -22,6 +27,18 @@ class AdapterTests(unittest.TestCase):
             with self.assertRaises(ImportFailure):
                 fetch_api('GET', 'https://www.leboncoin.fr/')
             opener.assert_not_called()
+
+    def test_browser_challenge_stops_before_ad_request(self):
+        from curl_cffi import requests
+        session = unittest.mock.MagicMock()
+        session.get.return_value.status_code = 403
+        with patch.dict('os.environ', {'LEBONCOIN_TRANSPORT': 'chrome_android'}), patch.object(requests, 'Session', return_value=session):
+            with self.assertRaises(ImportFailure) as error:
+                get_ad('123')
+        self.assertEqual(error.exception.code, 'MANUAL_IMPORT_REQUIRED')
+        session.get.assert_called_once()
+        session.request.assert_not_called()
+        session.close.assert_called_once()
 
     def test_json_transport_identifies_itself_without_cookies(self):
         from email.message import Message

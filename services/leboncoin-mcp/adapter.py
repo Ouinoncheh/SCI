@@ -1,9 +1,11 @@
 """get_ad adapter inspired by wydii/leboncoin-mcp (MIT).
 
-Use lbc's ad parser, never its default session: that session impersonates browsers,
-fetches HTML for cookies and retries 403s. Those behaviours are prohibited here.
+Uses the chrome_android setting documented by BPiroga/leboncoin-mcp.
+The user authorized this browser transport after the plain transport failed.
+No proxy or retries; blocked requests retain the manual fallback.
 """
 import json
+import os
 import urllib.error
 import urllib.request
 
@@ -57,7 +59,39 @@ def get_ad(ad_id):
             def _fetch(self, method, url, payload=None, max_retries=-1):
                 return fetch_api(method, url, payload, max_retries)
 
-        ad = PlainClient().get_ad(ad_id)
+        if os.environ.get('LEBONCOIN_TRANSPORT') == 'plain':
+            ad = PlainClient().get_ad(ad_id)
+        else:
+            # Bound the cookie initialization request too (lbc otherwise omits
+            # a timeout there). No account cookies are read from the computer.
+            class BrowserClient(lbc.Client):
+                def _init_session(self, proxy=None, impersonate=None, request_verify=True):
+                    from curl_cffi import requests
+                    session = requests.Session(impersonate='chrome_android', trust_env=False)
+                    session.headers.update({'User-Agent': self._generate_user_agent(),
+                                            'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors',
+                                            'Sec-Fetch-Site': 'same-site'})
+                    try:
+                        response = session.get('https://www.leboncoin.fr/', timeout=3,
+                                               verify=True, allow_redirects=False)
+                        if response.status_code in (401, 403, 429):
+                            raise ImportFailure('MANUAL_IMPORT_REQUIRED', 403)
+                        if not response.ok:
+                            raise ImportFailure('LEBONCOIN_SERVICE_UNAVAILABLE')
+                        return session
+                    except Exception:
+                        session.close()
+                        raise
+
+            client = BrowserClient(impersonate='chrome_android', timeout=3, max_retries=0)
+            try:
+                ad = client.get_ad(ad_id)
+            except lbc.exceptions.DatadomeError:
+                raise ImportFailure('MANUAL_IMPORT_REQUIRED', 403) from None
+            except lbc.exceptions.NotFoundError:
+                raise ImportFailure('LEBONCOIN_LISTING_NOT_FOUND', 404) from None
+            finally:
+                client.session.close()
         loc = ad.location
         # Preserve stable keys AND labels so normalization is independent of UI language.
         entries = ad.attributes.values() if isinstance(ad.attributes, dict) else ad.attributes
