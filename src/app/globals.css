@@ -2109,6 +2109,10 @@ tbody th {
   font-size: 28px;
 }
 .auth-social .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   width: 100%;
   min-height: 44px;
 }
