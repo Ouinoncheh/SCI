@@ -8,8 +8,9 @@ export function ImportAnalysis({ investment, dpe }: { investment: Investment; dp
     <section className="panel">
       <h2>Analyse du projet</h2>
       <p>
-        Loyer et travaux estimés : données indisponibles. Les calculs utilisent vos hypothèses
-        renseignées.
+        Les calculs utilisent le loyer hors charges et les hypothèses du formulaire. Vous pouvez
+        choisir un loyer dans l’estimation locale ci-dessus, puis le modifier. Les travaux restent à
+        renseigner.
       </p>
       {result ? (
         <>

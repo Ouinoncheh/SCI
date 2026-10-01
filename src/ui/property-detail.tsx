@@ -18,6 +18,7 @@ import { euro, number, pct } from './format';
 import { PropertyPhoto } from './property-photo';
 import { CashFlowChart, ProjectionChart } from './charts';
 import { InvestmentFields } from './investment-fields';
+import { RentEstimator } from './rent-estimator';
 import { PropertyCollaboration, PropertyHistory } from './property-collaboration';
 import { PropertyEditor } from './property-editor';
 import { RoomGallery } from './room-gallery';
@@ -373,6 +374,21 @@ function Detail({ p }: { p: DemoProperty }) {
               }}
             >
               <InvestmentFields value={draft} onChange={setDraft} />
+              <RentEstimator
+                city={p.city}
+                postcode={p.postcode}
+                rooms={p.rooms}
+                investment={draft}
+                onChange={setDraft}
+                disabled={!canEdit || busy}
+                initialKind={
+                  p.importData?.normalized.propertyType === 'HOUSE'
+                    ? 'HOUSE'
+                    : p.importData?.normalized.propertyType === 'APARTMENT'
+                      ? 'APARTMENT'
+                      : ''
+                }
+              />
               {!valid.success && (
                 <div role="alert" className="error">
                   {valid.error.issues.map((i) => `${i.path.join('.')} : ${i.message}`).join(' · ')}

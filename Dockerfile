@@ -26,6 +26,7 @@ COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/next.config.ts ./next.config.ts
 COPY --from=build --chown=node:node /app/services/leboncoin-mcp ./services/leboncoin-mcp
+COPY --from=build --chown=node:node /app/src/market-data/data ./src/market-data/data
 USER node
 EXPOSE 3000
 CMD ["node", "scripts/start-production.mjs"]

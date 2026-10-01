@@ -2120,6 +2120,11 @@ tbody th {
   text-align: center;
   margin: 16px 0;
 }
+.rent-hypotheses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 20px;
+}
 .auth-card form label,
 .profile-field {
   display: flex;

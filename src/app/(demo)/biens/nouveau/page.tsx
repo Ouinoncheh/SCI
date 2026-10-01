@@ -5,6 +5,7 @@ import { investmentSchema, type Investment } from '@/financial-engine';
 import { UserTextProvider } from '@/listing-providers';
 import { useDemo } from '@/ui/demo-context';
 import { InvestmentFields } from '@/ui/investment-fields';
+import { RentEstimator } from '@/ui/rent-estimator';
 import { PageHeading } from '@/ui/shell';
 import { ListingImport } from '@/ui/listing-import';
 import { ImportAnalysis } from '@/ui/import-analysis';
@@ -209,6 +210,22 @@ export default function NewProperty() {
             </label>
           </div>
           <InvestmentFields value={v} onChange={setV} />
+          <RentEstimator
+            key={listing?.normalized?.propertyType ?? 'manual'}
+            city={city}
+            postcode={postcode}
+            rooms={rooms}
+            investment={v}
+            onChange={setV}
+            initialKind={
+              listing?.normalized?.propertyType === 'HOUSE'
+                ? 'HOUSE'
+                : listing?.normalized?.propertyType === 'APARTMENT'
+                  ? 'APARTMENT'
+                  : ''
+            }
+            disabled={!canEdit}
+          />
           <ImportAnalysis investment={v} dpe={dpe} />
           <label className="checkbox confirmation">
             <input
