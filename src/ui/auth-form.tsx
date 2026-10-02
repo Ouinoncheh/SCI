@@ -121,7 +121,7 @@ export function AuthForm({
                 await api('/api/auth/sign-in/email', 'POST', {
                   email,
                   password,
-                  rememberMe: false,
+                  rememberMe: true,
                 });
                 router.push('/espace');
                 router.refresh();
