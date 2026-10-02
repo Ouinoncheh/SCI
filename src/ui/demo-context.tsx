@@ -17,6 +17,7 @@ type DemoState = {
   toggleFavorite: (id: string) => Promise<void>;
   add: (p: DemoProperty) => Promise<string | null>;
   setStatus: (id: string, status: string) => Promise<void>;
+  deleteProperty: (id: string) => Promise<boolean>;
   saveInvestment: (id: string, investment: Investment) => Promise<boolean>;
   saveDetails: (id: string, details: PropertyDetails, version?: number) => Promise<boolean>;
 };
@@ -114,6 +115,16 @@ export function DemoProvider({
         await reload();
         return result.id;
       });
+    },
+    deleteProperty: async (id) => {
+      if (!workspace) { setItems((rows) => rows.filter((p) => p.id !== id)); return true; }
+      const p = items.find((p) => p.id === id);
+      if (!p || !endpoint) return false;
+      return (await mutate(async () => {
+        await api(`${endpoint}/${id}`, 'DELETE', { version: p.version });
+        await reload();
+        return true;
+      })) ?? false;
     },
     setStatus: async (id, status) => {
       if (!workspace) {

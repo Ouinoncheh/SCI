@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CircleAlert, Download, Info, RotateCcw } from 'lucide-react';
 import {
@@ -56,7 +57,9 @@ export function PropertyDetail({ id }: { id: string }) {
   );
 }
 function Detail({ p }: { p: DemoProperty }) {
-  const { setStatus, basePath, persistent, canEdit, busy, saveInvestment } = useDemo();
+  const { setStatus, basePath, persistent, canEdit, busy, saveInvestment, deleteProperty } = useDemo();
+  const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState(false);
   const [draft, setDraft] = useState<Investment>(p.investment),
     [v, setV] = useState<Investment>(p.investment),
@@ -124,6 +127,14 @@ function Detail({ p }: { p: DemoProperty }) {
           </select>
         </label>
       </div>
+      {canEdit && <div className="panel">
+        {!confirmDelete ? <button className="button" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Supprimer ce bien</button> : <div role="alert">
+          <strong>Supprimer « {p.title} » ?</strong>
+          <p>Le bien, ses analyses et ses échanges seront supprimés pour toute la SCI. Cette action est définitive. Pour simplement l’écarter, utilisez le statut « Écarté ».</p>
+          <button className="button" type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Annuler</button>{' '}
+          <button className="button" type="button" disabled={busy} onClick={async () => { if (await deleteProperty(p.id)) router.push(`${basePath}/biens`); }}>{busy ? 'Suppression…' : 'Confirmer la suppression'}</button>
+        </div>}
+      </div>}
       <div className="demo-notice">
         <Info size={16} />
         <span>

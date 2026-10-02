@@ -16,7 +16,7 @@ import {
   createInvitation,
   acceptInvitation,
 } from '@/server/workspace';
-import { createProperty, listProperties, setFavorite, updateProperty } from '@/server/properties';
+import { createProperty, deleteProperty, listProperties, setFavorite, updateProperty } from '@/server/properties';
 import {
   getCollaboration,
   addComment,
@@ -126,6 +126,10 @@ async function handler(request: Request, context: Context) {
       await updateProperty(user.id, sciId, id, await jsonBody(request));
       return result({ ok: true });
     }
+    if (child === 'properties' && id && path.length === 4 && request.method === 'DELETE') {
+      await deleteProperty(user.id, sciId, id, await jsonBody(request));
+      return result({ ok: true });
+    }
     if (
       child === 'properties' &&
       id &&
@@ -145,4 +149,4 @@ async function handler(request: Request, context: Context) {
     return errorResponse(error);
   }
 }
-export { handler as GET, handler as POST, handler as PATCH, handler as PUT };
+export { handler as GET, handler as POST, handler as PATCH, handler as PUT, handler as DELETE };

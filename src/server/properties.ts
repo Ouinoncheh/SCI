@@ -16,6 +16,14 @@ function analysisData(v: Investment) {
     results: results as Prisma.InputJsonValue,
   };
 }
+export async function deleteProperty(userId: string, sciId: string, id: string, raw: unknown) {
+  await membership(userId, sciId, 'write');
+  const version = (raw as { version?: unknown })?.version;
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1)
+    throw new HttpError(400, 'Version du bien requise.');
+  const result = await db.property.deleteMany({ where: { id, sciId, version } });
+  if (!result.count) throw new HttpError(409, 'Bien introuvable ou modifié. Rechargez la liste.');
+}
 export async function listProperties(userId: string, sciId: string): Promise<DemoProperty[]> {
   const member = await membership(userId, sciId);
   const rows = await db.property.findMany({
