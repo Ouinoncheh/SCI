@@ -18,7 +18,7 @@ import { safeLogUrl } from './import-log';
 export const importRequestSchema = z
   .object({
     url: webUrl,
-    html: z.string().max(2_000_000).optional(),
+    html: z.string().max(50_000_000).optional(),
     text: z.string().max(20000).optional(),
     draftId: z.string().min(1).max(100).optional(),
     version: z.number().int().positive().optional(),

@@ -203,7 +203,7 @@ export function ImportListingForm({
         />
       </label>
       <label>
-        Fichier HTML ou webarchive Safari (facultatif, 2 Mo maximum)
+        Fichier HTML ou webarchive Safari (facultatif, 50 Mo maximum)
         <input
           type="file"
           accept=".html,.htm,.webarchive,text/html,application/xhtml+xml,application/x-webarchive"
@@ -212,8 +212,8 @@ export function ImportListingForm({
             const selected = e.target.files?.[0];
             setHtml(undefined);
             if (!selected) return;
-            if (selected.size > 2_000_000) {
-              setError('Fichier limité à 2 Mo.');
+            if (selected.size > 50_000_000) {
+              setError('Fichier limité à 50 Mo.');
               return;
             }
             try {

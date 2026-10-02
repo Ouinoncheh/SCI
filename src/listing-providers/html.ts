@@ -16,7 +16,7 @@ function num(v: unknown) {
 }
 /** Read inert markup only. Never executes scripts or loads images/subresources. */
 export function parseListingHtml(html: string, sourceUrl: string): ImportedListing {
-  if (Buffer.byteLength(html) > 2_000_000) throw new Error('Page trop volumineuse (2 Mo maximum).');
+  if (Buffer.byteLength(html) > 50_000_000) throw new Error('Page trop volumineuse (50 Mo maximum).');
   const $ = load(html);
   const nodes: Obj[] = [];
   function walk(v: unknown, depth = 0) {

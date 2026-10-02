@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const user = await requireUser(request.headers);
     await rateLimit(`listing-import:${user.id}`, 10);
     const { sciId, property, photoRights, ...input } = requestSchema.parse(
-      await jsonBody(request, 2_100_000),
+      await jsonBody(request, 52_500_000),
     );
     const draft = await importDraft(user.id, sciId, input);
     const normalized = draft.normalized as unknown as NormalizedProperty;
