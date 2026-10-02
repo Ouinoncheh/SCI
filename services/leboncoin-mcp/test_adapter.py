@@ -31,12 +31,15 @@ class AdapterTests(unittest.TestCase):
     def test_browser_challenge_stops_before_ad_request(self):
         from curl_cffi import requests
         session = unittest.mock.MagicMock()
-        session.get.return_value.status_code = 403
+        session.post.return_value.status_code = 403
         with patch.dict('os.environ', {'LEBONCOIN_TRANSPORT': 'chrome_android'}), patch.object(requests, 'Session', return_value=session):
             with self.assertRaises(ImportFailure) as error:
                 get_ad('123')
         self.assertEqual(error.exception.code, 'MANUAL_IMPORT_REQUIRED')
-        session.get.assert_called_once()
+        session.post.assert_called_once()
+        self.assertEqual(session.post.call_args.args[0], 'https://api.leboncoin.fr/finder/search')
+        self.assertEqual(session.post.call_args.kwargs['json']['limit'], 1)
+        session.get.assert_not_called()
         session.request.assert_not_called()
         session.close.assert_called_once()
 

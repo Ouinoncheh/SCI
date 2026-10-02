@@ -72,7 +72,10 @@ def get_ad(ad_id):
                                             'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors',
                                             'Sec-Fetch-Site': 'same-site'})
                     try:
-                        response = session.get('https://www.leboncoin.fr/', timeout=3,
+                        response = session.post('https://api.leboncoin.fr/finder/search',
+                                               json={'filters': {}, 'limit': 1, 'limit_alu': 0,
+                                                     'offset': 0, 'disable_total': True,
+                                                     'extend': False, 'listing_source': 'direct-search'}, timeout=3,
                                                verify=True, allow_redirects=False)
                         if response.status_code in (401, 403, 429):
                             raise ImportFailure('MANUAL_IMPORT_REQUIRED', 403)
