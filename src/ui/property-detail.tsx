@@ -64,7 +64,7 @@ function Detail({ p }: { p: DemoProperty }) {
   const [scenarioIndex, setScenarioIndex] = useState(1),
     [scenario, setScenario] = useState(scenarioFixtures[1]),
     [target, setTarget] = useState(0);
-  const valid = investmentSchema.safeParse(draft),
+  const valid = investmentSchema.safeParse({ ...draft, monthlyRent: Number.isNaN(draft.monthlyRent) ? 0 : draft.monthlyRent }),
     scenarioValid = scenarioSchema.safeParse(scenario);
   const a = analyze(v),
     score = opportunityScore(v, p.dpe),
@@ -134,6 +134,7 @@ function Detail({ p }: { p: DemoProperty }) {
         </span>
       </div>
       <div className="detail-hero">
+        {v.rentPending && <p className="demo-notice" role="status">Loyer à estimer. Les résultats actuels sont calculés sans recettes locatives et ne constituent pas une estimation de rentabilité. Dans les hypothèses, recherchez le loyer local selon la commune, la surface et le type de logement, puis appliquez un scénario.</p>}
         <PropertyPhoto
           url={p.photoUrl ?? p.listing?.photos[0]}
           title={p.title}
@@ -150,16 +151,16 @@ function Detail({ p }: { p: DemoProperty }) {
           <div className="hero-metrics">
             <div>
               <small>Loyer HC / mois</small>
-              <strong>{euro(v.monthlyRent)}</strong>
+              <strong>{v.rentPending ? 'À estimer' : euro(v.monthlyRent)}</strong>
             </div>
             <div>
               <small>Rendement net</small>
-              <strong>{pct(a.netYield)}</strong>
+              <strong>{v.rentPending ? 'À estimer' : pct(a.netYield)}</strong>
             </div>
             <div>
               <small>Cash-flow / mois</small>
               <strong className={a.cashFlowMonthly >= 0 ? 'positive' : 'negative'}>
-                {euro(a.cashFlowMonthly)}
+                {v.rentPending ? 'À estimer' : euro(a.cashFlowMonthly)}
               </strong>
             </div>
             <div>

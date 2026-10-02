@@ -52,7 +52,10 @@ export default function NewProperty() {
     [text, setText] = useState(''),
     [confirmed, setConfirmed] = useState(false),
     [message, setMessage] = useState('');
-  const valid = investmentSchema.safeParse(v);
+  const valid = investmentSchema.safeParse({ ...v,
+    monthlyRent: Number.isNaN(v.monthlyRent) ? 0 : v.monthlyRent,
+    rentPending: Number.isNaN(v.monthlyRent) || v.rentPending === true,
+  });
   function extract() {
     const data = new UserTextProvider().normalizeListing(text);
     if (data.city) setCity(data.city);
@@ -240,7 +243,7 @@ export default function NewProperty() {
           </label>
           {!valid.success && (
             <p className="muted">
-              Le prix, la surface et le loyer doivent être renseignés. L’apport ne peut dépasser le
+              Le prix et la surface doivent être renseignés. L’apport ne peut dépasser le
               coût total.
             </p>
           )}

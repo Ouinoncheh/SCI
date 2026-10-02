@@ -55,7 +55,7 @@ export function PropertyCard({ property: p }: { property: DemoProperty }) {
         <div className="card-metrics">
           <div>
             <small>Rendement net</small>
-            <strong>{pct(a.netYield)}</strong>
+            <strong>{p.investment.rentPending ? 'À estimer' : pct(a.netYield)}</strong>
           </div>
           <div>
             <small>Cash-flow / mois</small>

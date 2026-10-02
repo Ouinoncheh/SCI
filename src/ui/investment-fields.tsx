@@ -1,6 +1,6 @@
 'use client';
 import type { Investment } from '@/financial-engine';
-export const fieldGroups: { name: string; fields: [keyof Investment, string, string][] }[] = [
+export const fieldGroups: { name: string; fields: [Exclude<keyof Investment, 'rentPending'>, string, string][] }[] = [
   {
     name: 'Acquisition & travaux',
     fields: [
@@ -64,20 +64,22 @@ export function InvestmentFields({
                 <div className="number-input">
                   <input
                     type="number"
-                    required
+                    required={key !== 'monthlyRent'}
                     min={key === 'price' || key === 'area' ? 0.01 : key === 'loanYears' ? 1 : 0}
                     max={key === 'loanYears' ? 40 : undefined}
                     step={key === 'loanYears' ? 1 : 'any'}
-                    value={Number.isNaN(value[key]) ? '' : value[key]}
+                    value={Number.isNaN(value[key]) || (key === 'monthlyRent' && value.rentPending) ? '' : value[key] as number}
                     onChange={(e) =>
                       onChange({
                         ...value,
                         [key]: e.target.value === '' ? NaN : Number(e.target.value),
+                        ...(key === 'monthlyRent' ? { rentPending: e.target.value === '' } : {}),
                       })
                     }
                   />
                   <span>{unit}</span>
                 </div>
+                {key === 'monthlyRent' && <small>Facultatif à l’achat. Vous pourrez estimer ce loyer selon la commune et la surface.</small>}
               </label>
             ))}
           </div>

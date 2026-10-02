@@ -206,7 +206,7 @@ export function RentEstimator({
                       disabled={h.monthlyRent === null}
                       onClick={() => {
                         if (h.monthlyRent !== null)
-                          onChange({ ...investment, monthlyRent: h.monthlyRent });
+                          onChange({ ...investment, monthlyRent: h.monthlyRent, rentPending: false });
                       }}
                     >
                       Utiliser ce loyer

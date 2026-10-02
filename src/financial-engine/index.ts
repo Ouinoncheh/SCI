@@ -20,6 +20,7 @@ export const investmentSchema = z
     loanYears: z.number().int().min(1).max(40),
     insuranceRate: percent,
     monthlyRent: money,
+    rentPending: z.boolean().optional(),
     vacancyRate: percent,
     propertyTax: money,
     condoCharges: money,
