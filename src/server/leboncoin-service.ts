@@ -30,7 +30,13 @@ export async function getLeboncoinAd(adId: string): Promise<unknown> {
       redirect: 'error',
       cache: 'no-store',
     });
-    if (!response.ok)
+    if (!response.ok) {
+      console.warn(JSON.stringify({
+        provider: 'LEBONCOIN',
+        listingId: adId,
+        operation: 'CONNECTOR_RESPONSE',
+        httpStatus: response.status,
+      }));
       throw new ListingProviderError(
         response.status === 404
           ? 'LEBONCOIN_LISTING_NOT_FOUND'
@@ -38,6 +44,7 @@ export async function getLeboncoinAd(adId: string): Promise<unknown> {
             ? 'MANUAL_IMPORT_REQUIRED'
             : 'LEBONCOIN_SERVICE_UNAVAILABLE',
       );
+    }
     if (!response.headers.get('content-type')?.includes('application/json'))
       throw new ListingProviderError('LEBONCOIN_IMPORT_FAILED');
     const reader = response.body?.getReader();

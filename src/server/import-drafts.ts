@@ -154,6 +154,7 @@ export async function importDraft(
       sourceUrl: safeLogUrl(input.url),
       operation: 'IMPORT',
       status: draft.status,
+      errorCode: 'errorCode' in result ? result.errorCode : undefined,
       durationMs: Date.now() - started,
     }),
   );
