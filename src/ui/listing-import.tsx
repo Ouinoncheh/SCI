@@ -16,20 +16,21 @@ import {
   type PropertyValues,
 } from '../listing-providers/normalized';
 import { normalizeListingText } from '../listing-providers/text';
-import { extractBinaryWebarchive } from '../listing-providers/webarchive';
+import { readBinaryWebarchive } from '../listing-providers/webarchive';
 import type { DraftDto } from '../server/import-drafts';
 type Asset = { id: string; kind: string; originalFilename: string };
 type Draft = DraftDto & { assets?: Asset[] };
-async function readListingFile(file: File): Promise<string> {
+async function readListingFile(file: File): Promise<{ html: string; url?: string }> {
   const input = new Uint8Array(await file.arrayBuffer());
-  if (new TextDecoder().decode(input.subarray(0, 8)) === 'bplist00') return extractBinaryWebarchive(input);
+  if (new TextDecoder().decode(input.subarray(0, 8)) === 'bplist00') return readBinaryWebarchive(input);
   const raw = new TextDecoder().decode(input);
-  if (!/\.webarchive$/i.test(file.name) && file.type !== 'application/x-webarchive') return raw;
+  if (!/\.webarchive$/i.test(file.name) && file.type !== 'application/x-webarchive') return { html: raw };
   // Safari can export an XML property list. Extract WebMainResource.WebResourceData.
   const match = raw.match(/<key>WebResourceData<\/key>\s*<data>([^<]+)<\/data>/i);
   if (!match) throw new Error('Webarchive Safari invalide : page HTML principale introuvable.');
   const bytes = Uint8Array.from(atob(match[1].replace(/\s+/g, '')), (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  const source = raw.match(/<key>WebResourceURL<\/key>\s*<string>([^<]+)<\/string>/i)?.[1];
+  return { html: new TextDecoder().decode(bytes), url: source };
 }
 const numbers = new Set([
   'price',
@@ -60,6 +61,7 @@ export function ImportListingForm({
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
+  const [readingFile, setReadingFile] = useState(false);
   const [recent, setRecent] = useState<{ id: string; sourceUrl: string; status: string }[]>([]),
     [file, setFile] = useState<File>(),
     [kind, setKind] = useState('document');
@@ -196,7 +198,6 @@ export function ImportListingForm({
           onChange={(e) => {
             setUrl(e.target.value);
             setDraft(undefined);
-            setHtml(undefined);
             setText('');
             setError('');
             setMessage('');
@@ -210,30 +211,41 @@ export function ImportListingForm({
         <input
           type="file"
           accept=".html,.htm,.webarchive,text/html,application/xhtml+xml,application/x-webarchive"
-          disabled={busy || !base}
+          disabled={busy || readingFile || !base || !canEdit}
           onChange={async (e) => {
             const selected = e.target.files?.[0];
             setHtml(undefined);
+            setError('');
+            setMessage('');
             if (!selected) return;
             if (selected.size > 50_000_000) {
               setError('Fichier limité à 50 Mo.');
               return;
             }
+            setReadingFile(true);
             try {
-              setHtml(await readListingFile(selected));
+              const contents = await readListingFile(selected);
+              setHtml(contents.html);
+              setDraft(undefined);
+              if (!publicHttps(url) && contents.url && publicHttps(contents.url)) setUrl(contents.url);
+              setMessage('Fichier lu. Vérifiez le lien de l’annonce, puis lancez l’analyse.');
             } catch (fileError) {
               setError(fileError instanceof Error ? fileError.message : 'Fichier Safari illisible.');
+            } finally {
+              setReadingFile(false);
             }
           }}
         />
       </label>
       <button
         className="button primary"
-        disabled={busy || !canEdit || !publicHttps(url)}
+        disabled={busy || readingFile || !canEdit || !publicHttps(url)}
         onClick={() => void operation(() => analyze())}
       >
-        {busy ? 'Récupération de l’annonce…' : 'Analyser le bien'}
+        {readingFile ? 'Lecture du fichier Safari…' : busy ? 'Récupération de l’annonce…' : 'Analyser le bien'}
       </button>
+      {!publicHttps(url) && <p role="status">Collez le lien HTTPS de l’annonce pour activer l’analyse. Le fichier sélectionné sera conservé.</p>}
+      {!canEdit && <p role="status">L’import nécessite un accès en modification à cette SCI.</p>}
       {error && <p role="alert">{error}</p>}
       {message && (
         <p className="demo-notice" role="status">

@@ -1,5 +1,8 @@
 /** Reads only WebMainResource from Safari binary plists; embedded resources stay local. */
 export function extractBinaryWebarchive(input: Uint8Array): string {
+  return readBinaryWebarchive(input).html;
+}
+export function readBinaryWebarchive(input: Uint8Array): { html: string; url?: string } {
   const fail = () => new Error('Webarchive Safari invalide ou page principale indisponible.');
   if (input.length < 40 || new TextDecoder().decode(input.subarray(0, 8)) !== 'bplist00') throw fail();
   const view = new DataView(input.buffer, input.byteOffset, input.byteLength);
@@ -56,5 +59,7 @@ export function extractBinaryWebarchive(input: Uint8Array): string {
   let decoder: TextDecoder;
   try { decoder = new TextDecoder(encoding === undefined ? 'utf-8' : string(encoding)); }
   catch { throw new Error('Encodage de la page Safari non pris en charge.'); }
-  return decoder.decode(input.subarray(resource.start, resource.start + resource.length));
+  const source = field(main, 'WebResourceURL');
+  return { html: decoder.decode(input.subarray(resource.start, resource.start + resource.length)),
+    url: source === undefined ? undefined : string(source) };
 }
