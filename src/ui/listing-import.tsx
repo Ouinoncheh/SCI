@@ -19,6 +19,15 @@ import { normalizeListingText } from '../listing-providers/text';
 import type { DraftDto } from '../server/import-drafts';
 type Asset = { id: string; kind: string; originalFilename: string };
 type Draft = DraftDto & { assets?: Asset[] };
+async function readListingFile(file: File): Promise<string> {
+  const raw = await file.text();
+  if (!/\.webarchive$/i.test(file.name) && file.type !== 'application/x-webarchive') return raw;
+  // Safari can export an XML property list. Extract WebMainResource.WebResourceData.
+  const match = raw.match(/<key>WebResourceData<\/key>\s*<data>([^<]+)<\/data>/i);
+  if (!match) throw new Error('Ce webarchive Safari est binaire. Choisissez Partager → Copier, puis collez le texte de l’annonce.');
+  const bytes = Uint8Array.from(atob(match[1].replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 const numbers = new Set([
   'price',
   'surface',
@@ -194,10 +203,10 @@ export function ImportListingForm({
         />
       </label>
       <label>
-        Fichier HTML de l’annonce (facultatif, 2 Mo maximum)
+        Fichier HTML ou webarchive Safari (facultatif, 2 Mo maximum)
         <input
           type="file"
-          accept=".html,.htm,text/html,application/xhtml+xml"
+          accept=".html,.htm,.webarchive,text/html,application/xhtml+xml,application/x-webarchive"
           disabled={busy || !base}
           onChange={async (e) => {
             const selected = e.target.files?.[0];
@@ -207,7 +216,11 @@ export function ImportListingForm({
               setError('Fichier limité à 2 Mo.');
               return;
             }
-            setHtml(await selected.text());
+            try {
+              setHtml(await readListingFile(selected));
+            } catch (fileError) {
+              setError(fileError instanceof Error ? fileError.message : 'Fichier Safari illisible.');
+            }
           }}
         />
       </label>
