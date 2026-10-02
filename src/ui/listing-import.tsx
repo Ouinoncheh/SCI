@@ -134,6 +134,15 @@ export function ImportListingForm({
         Collez un lien Leboncoin pour récupérer les données disponibles. Si l’import échoue,
         complétez l’annonce ici.
       </p>
+      <aside className="import-help" aria-label="Importer depuis un téléphone">
+        <strong>Depuis Safari ou Chrome sur téléphone</strong>
+        <ol>
+          <li>Ouvrez l’annonce dans votre navigateur.</li>
+          <li>Choisissez <b>Partager</b>, puis <b>Enregistrer dans Fichiers</b>.</li>
+          <li>Revenez ici et sélectionnez le fichier HTML ci-dessous.</li>
+        </ol>
+        <p>Cette méthode utilise le contenu visible par votre téléphone lorsque le site bloque notre serveur.</p>
+      </aside>
       {!base && (
         <p className="demo-notice">
           Brouillon temporaire de démonstration.{' '}
@@ -188,7 +197,7 @@ export function ImportListingForm({
         Fichier HTML de l’annonce (facultatif, 2 Mo maximum)
         <input
           type="file"
-          accept=".html,.htm,text/html"
+          accept=".html,.htm,text/html,application/xhtml+xml"
           disabled={busy || !base}
           onChange={async (e) => {
             const selected = e.target.files?.[0];
