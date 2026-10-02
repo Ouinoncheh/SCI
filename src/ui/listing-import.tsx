@@ -16,15 +16,18 @@ import {
   type PropertyValues,
 } from '../listing-providers/normalized';
 import { normalizeListingText } from '../listing-providers/text';
+import { extractBinaryWebarchive } from '../listing-providers/webarchive';
 import type { DraftDto } from '../server/import-drafts';
 type Asset = { id: string; kind: string; originalFilename: string };
 type Draft = DraftDto & { assets?: Asset[] };
 async function readListingFile(file: File): Promise<string> {
-  const raw = await file.text();
+  const input = new Uint8Array(await file.arrayBuffer());
+  if (new TextDecoder().decode(input.subarray(0, 8)) === 'bplist00') return extractBinaryWebarchive(input);
+  const raw = new TextDecoder().decode(input);
   if (!/\.webarchive$/i.test(file.name) && file.type !== 'application/x-webarchive') return raw;
   // Safari can export an XML property list. Extract WebMainResource.WebResourceData.
   const match = raw.match(/<key>WebResourceData<\/key>\s*<data>([^<]+)<\/data>/i);
-  if (!match) throw new Error('Ce webarchive Safari est binaire. Choisissez Partager → Copier, puis collez le texte de l’annonce.');
+  if (!match) throw new Error('Webarchive Safari invalide : page HTML principale introuvable.');
   const bytes = Uint8Array.from(atob(match[1].replace(/\s+/g, '')), (c) => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 }
