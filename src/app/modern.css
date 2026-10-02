@@ -313,6 +313,20 @@ main {
 .import-help p {
   margin: 8px 0 0;
 }
+.property-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.property-steps button { display: flex; gap: 12px; align-items: center; text-align: left; min-height: 76px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: white; color: var(--muted); cursor: pointer; transition: background 180ms, border-color 180ms, box-shadow 180ms; }
+.property-steps button.active { color: var(--accent); background: #edf3ff; border-color: var(--accent); box-shadow: 0 4px 16px #2854db18; }
+.property-steps small { display: block; margin-bottom: 4px; font-size: 12px; }
+.step-symbol { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #f2f5fb; flex-shrink: 0; }
+.guided-stage:not([hidden]) { animation: guided-enter 220ms ease-out; }
+.guided-stage[hidden], .panel[hidden] { display: none; }
+.guided-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 8px; }
+.guided-actions .button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.save-checklist { padding: 18px; margin-top: 16px; background: #fff8ec; border: 1px solid #e8c891; border-radius: 14px; color: #714813; }
+.save-checklist ul { padding-left: 20px; line-height: 1.7; }
+@keyframes guided-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) { .property-steps { gap: 6px; } .property-steps button { flex-direction: column; align-items: flex-start; padding: 10px; font-size: 12px; } .property-steps small { font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) { .guided-stage:not([hidden]) { animation: none; } .property-steps button { transition: none; } }
 .stats-grid {
   gap: 18px;
   margin: 28px 0 38px;

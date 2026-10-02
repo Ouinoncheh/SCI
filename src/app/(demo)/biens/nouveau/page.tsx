@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Link2, House, ChartNoAxesCombined, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { investmentSchema, type Investment } from '@/financial-engine';
 import { UserTextProvider } from '@/listing-providers';
@@ -39,6 +40,9 @@ const empty: Investment = {
   reserveRate: 0,
 };
 export default function NewProperty() {
+  const [step, setStep] = useState(0);
+  const steps = ['Importer l’annonce', 'Vérifier le bien', 'Explorer le budget'];
+  const icons = [Link2, House, ChartNoAxesCombined];
   const { add, persistent, basePath, canEdit, busy } = useDemo();
   const router = useRouter();
   const [listing, setListing] = useState<ListingAttachment>();
@@ -56,6 +60,14 @@ export default function NewProperty() {
     monthlyRent: Number.isNaN(v.monthlyRent) ? 0 : v.monthlyRent,
     rentPending: Number.isNaN(v.monthlyRent) || v.rentPending === true,
   });
+  const blockers = [
+    ...(title.trim().length < 2 ? ['Renseignez un nom de bien de 2 caractères minimum.'] : []),
+    ...(!city.trim() ? ['Renseignez la ville.'] : []),
+    ...(!/^\d{5}$/.test(postcode) ? ['Renseignez un code postal de 5 chiffres.'] : []),
+    ...(!valid.success ? valid.error.issues.map((issue) => `${issue.path[0] === 'price' ? 'Prix d’achat' : issue.path[0] === 'area' ? 'Surface' : 'Hypothèses financières'} : ${issue.message}`) : []),
+    ...(!confirmed ? ['Cochez la confirmation des hypothèses.'] : []),
+    ...(!canEdit ? ['Un accès en modification à la SCI est nécessaire.'] : []),
+  ];
   function extract() {
     const data = new UserTextProvider().normalizeListing(text);
     if (data.city) setCity(data.city);
@@ -77,9 +89,21 @@ export default function NewProperty() {
         }
         action={false}
       />
+      <nav className="property-steps" aria-label="Étapes de création du bien">
+        {steps.map((label, index) => {
+          const Icon = icons[index];
+          return <button key={label} type="button" aria-current={step === index ? 'step' : undefined}
+            onClick={() => setStep(index)} className={step === index ? 'active' : ''}>
+            <span className="step-symbol"><Icon size={20} aria-hidden="true" /></span>
+            <span><small>Étape {index + 1}</small>{label}</span>
+          </button>;
+        })}
+      </nav>
+      <div className="guided-stage" hidden={step !== 0}>
       <ListingImport
         onApply={(data, attachment) => {
           setListing(attachment);
+          setStep(1);
           setTitle(data.title ?? '');
           setCity(data.city ?? '');
           setPostcode(data.postcode ?? '');
@@ -125,7 +149,9 @@ export default function NewProperty() {
           </p>
         )}
       </section>
-      <section className="panel">
+      <div className="guided-actions"><button type="button" className="button primary" onClick={() => setStep(1)}>Continuer avec une saisie manuelle <ArrowRight size={16} aria-hidden="true" /></button></div>
+      </div>
+      <section className="panel" hidden={step === 0}>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -150,11 +176,18 @@ export default function NewProperty() {
             if (savedId) router.push(`${basePath}/biens/${savedId}`);
           }}
         >
-          <h2>Renseigner les hypothèses</h2>
+          <div className="guided-stage" hidden={step !== 1}>
+          <h2>Les informations essentielles</h2>
+          <p>Vérifiez les informations de l’annonce. Le loyer et les frais pourront être affinés ensuite.</p>
+          </div>
+          <div className="guided-stage" hidden={step !== 2}>
+          <h2>Préparer votre première analyse</h2>
           <p className="muted">
             Les zéros ne sont pas des estimations : renseignez chaque poste ou confirmez qu’il est
             sans objet. Le taux et la durée doivent correspondre au financement envisagé.
           </p>
+          </div>
+          <div className="guided-stage" hidden={step !== 1}>
           <div className="form-grid">
             <label>
               Nom du bien
@@ -212,6 +245,11 @@ export default function NewProperty() {
               </select>
             </label>
           </div>
+          <InvestmentFields value={v} onChange={setV} groups={[{name: 'Votre point de départ', fields: [['price', 'Prix d’achat', '€'], ['area', 'Surface habitable', 'm²']]}]} />
+          <div className="guided-actions"><button type="button" className="button" onClick={() => setStep(0)}><ArrowLeft size={16} aria-hidden="true" /> Retour</button><button type="button" className="button primary" onClick={() => setStep(2)}>Explorer le budget <ArrowRight size={16} aria-hidden="true" /></button></div>
+          </div>
+          <div className="guided-stage" hidden={step !== 2}>
+          <p className="demo-notice">Vous pouvez enregistrer sans loyer connu. L’estimation locale vous aidera à choisir une hypothèse, que vous pourrez modifier plus tard.</p>
           <InvestmentFields value={v} onChange={setV} />
           <RentEstimator
             key={listing?.normalized?.propertyType ?? 'manual'}
@@ -251,11 +289,14 @@ export default function NewProperty() {
             type="submit"
             className="button primary"
             disabled={
-              !valid.success || !confirmed || !title.trim() || !city.trim() || !canEdit || busy
+              blockers.length > 0 || busy
             }
           >
             {persistent ? 'Enregistrer le bien' : 'Créer l’analyse temporaire'}
           </button>
+          {blockers.length > 0 ? <div className="save-checklist" role="status"><strong>Avant d’enregistrer</strong><ul>{blockers.map((reason, index) => <li key={index}>{reason}</li>)}</ul><button className="button" type="button" onClick={() => setStep(1)}>Revoir les informations du bien</button></div> : <p className="positive"><Check size={16} aria-hidden="true" /> Votre bien est prêt à être enregistré.</p>}
+          <div className="guided-actions"><button type="button" className="button" onClick={() => setStep(1)}><ArrowLeft size={16} aria-hidden="true" /> Retour aux informations</button></div>
+          </div>
         </form>
       </section>
     </>
