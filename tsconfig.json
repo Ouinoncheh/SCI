@@ -18,8 +18,13 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "e2e/**/*.ts",
+    "integration/**/*.ts",
+    "prisma/**/*.ts",
+    "*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
