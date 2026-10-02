@@ -1,4 +1,6 @@
 import { betterAuth } from 'better-auth';
+import { createAuthMiddleware } from 'better-auth/api';
+import { expireCookie, setSessionCookie } from 'better-auth/cookies';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { db } from './db';
 import { sendMail } from './mail';
@@ -30,6 +32,15 @@ function createAuth() {
     trustedOrigins: [new URL(process.env.BETTER_AUTH_URL).origin],
     database: prismaAdapter(db, { provider: 'postgresql', transaction: true }),
     socialProviders: google ? { google: { ...google, prompt: 'select_account' } } : {},
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        const session = ctx.context.newSession;
+        if (!session) return;
+        // Clear the legacy browser-session preference, including OAuth callbacks.
+        expireCookie(ctx, ctx.context.authCookies.dontRememberToken);
+        await setSessionCookie(ctx, session, false);
+      }),
+    },
     session: {
       modelName: 'AuthSession',
       expiresIn: 60 * 60 * 24 * 30,
